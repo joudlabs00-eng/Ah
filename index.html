@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>لوح الهواء</title>
+<style>
+:root{color-scheme:dark;--bg:#0e1320;--card:#182033;--tx:#e9eefb;--mut:#8f9bb8;--ac:#5b8cff;--bad:#ff6b6b;--ok:#3ddc97;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+main{max-width:640px;margin:0 auto;padding:20px}
+h1{font-size:1.6rem;margin:0 0 4px}
+.s{color:var(--mut);margin:0 0 16px;font-size:.92rem}
+.card{background:var(--card);border-radius:16px;padding:18px;margin-bottom:14px}
+button{background:var(--ac);color:#fff;border:0;border-radius:10px;padding:12px 16px;font:inherit;cursor:pointer;margin:4px 0}
+button.g{background:#2a3654}
+button:disabled{opacity:.4}
+textarea,input{width:100%;background:#0e1320;color:var(--tx);border:1px solid #2a3654;border-radius:10px;padding:10px;font:inherit}
+textarea{height:80px;font-size:.72rem;direction:ltr}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>button{flex:1;min-width:150px}
+.msg{font-size:.9rem;margin-top:8px;min-height:1.2em}
+.bad{color:var(--bad)}.ok{color:var(--ok)}
+.hide{display:none!important}
+#code{font-size:3rem;letter-spacing:.4rem;text-align:center;font-weight:700;direction:ltr;color:var(--ok)}
+#codeIn{font-size:2rem;text-align:center;letter-spacing:.4rem;direction:ltr}
+details{margin-top:10px;color:var(--mut)}summary{cursor:pointer}
+#screenView{position:fixed;inset:0;background:#fff}
+#board,#cur{position:absolute;inset:0;width:100%;height:100%}
+#bar{position:absolute;top:env(safe-area-inset-top,0px);left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;padding:8px 10px;background:#101828e6;border-radius:0 0 14px 14px;z-index:5;flex-wrap:wrap;justify-content:center;max-width:100%}
+#bar button{padding:7px 11px;margin:0;font-size:.9rem}
+.sw{width:26px;height:26px;border-radius:50%;border:2px solid #fff4;padding:0!important;cursor:pointer}
+.sw.on{border-color:#fff;transform:scale(1.15)}
+#sz{width:80px;padding:0}
+#pill{position:absolute;bottom:12px;right:12px;background:#101828cc;padding:6px 12px;border-radius:20px;font-size:.8rem;color:#fff}
+.vw{position:relative}
+#cam{width:100%;border-radius:12px;background:#000;display:block}
+#ov{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+#step{font-weight:700;margin:0 0 8px;color:var(--ok)}
+.mk{position:absolute;width:46px;height:46px;border-radius:50%;background:#e53935;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;transform:translate(-50%,-50%);border:3px solid #fff;box-shadow:0 0 0 3px #000}
+.leg{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:.88rem;margin-top:10px}
+</style>
+</head>
+<body>
+<main id="app">
+<h1>لوح الهواء ✋</h1>
+<p class="s">ارسم بإصبعك في الهواء أمام كاميرا الهاتف، فيظهر الرسم على الشاشة.</p>
+
+<div id="s1" class="card">
+<b>ما هو هذا الجهاز؟</b>
+<div class="row" style="margin-top:10px">
+<button id="rPhone">📱 هاتف (كاميرا)</button>
+<button id="rScreen" class="g">🖥️ شاشة / حاسوب (بدون لمس)</button>
+</div>
+<div id="m1" class="msg"></div>
+</div>
+
+<div id="sScreen" class="card hide">
+<b>على الهاتف: اختر «هاتف» وأدخل هذا الرمز</b>
+<div id="code">----</div>
+<div id="m2" class="msg"></div>
+<details><summary>الربط اليدوي (إذا لم يتصل الرمز)</summary>
+<button id="mkOffer" class="g">إنشاء رمز اتصال</button>
+<textarea id="offerOut" readonly></textarea>
+<p class="s">الصق رد الهاتف:</p><textarea id="ansIn"></textarea>
+<button id="apAns" class="g">اتصال</button></details>
+</div>
+
+<div id="sPhone" class="card hide">
+<b>أدخل الرمز الظاهر على الشاشة</b>
+<input id="codeIn" inputmode="numeric" maxlength="4" placeholder="0000">
+<button id="join" style="width:100%">اتصال</button>
+<div id="m3" class="msg"></div>
+<details><summary>الربط اليدوي</summary>
+<p class="s">الصق رمز الشاشة:</p><textarea id="offerIn"></textarea>
+<button id="mkAns" class="g">إنشاء الرد</button><textarea id="ansOut" readonly></textarea></details>
+</div>
+
+<div id="phoneView" class="card hide">
+<div id="step" class="msg"></div>
+<div class="vw"><video id="cam" playsinline muted autoplay></video><canvas id="ov"></canvas></div>
+<div id="trk" class="msg"></div>
+<div class="row"><button id="bCal">📐 تحديد الشاشة</button><button id="bCol" class="g">🎯 لون الإصبع/القلم <span id="swatch" style="display:inline-block;width:16px;height:16px;border-radius:4px;vertical-align:middle;background:#444"></span></button></div>
+<div class="row"><button id="bDraw" class="g">✏️ الرسم: متوقف</button><button id="flip" class="g">🔄 تبديل الكاميرا</button></div>
+<p class="s" style="margin-top:10px">ضع الهاتف بحيث ترى الكاميرا الشاشة كاملة ويدك أمامها. للدقة: قرّب إصبعك من الشاشة، وأمسك شيئًا ملونًا بلون مميز (غطاء قلم أو ورقة لاصقة) أو استخدم لون إصبعك على خلفية مختلفة.</p>
+</div>
+</main>
+
+<div id="screenView" class="hide">
+<canvas id="board"></canvas><canvas id="cur"></canvas>
+<div id="bar">
+<button class="sw on" data-c="#111" style="background:#111"></button>
+<button class="sw" data-c="#e53935" style="background:#e53935"></button>
+<button class="sw" data-c="#1e88e5" style="background:#1e88e5"></button>
+<button class="sw" data-c="#43a047" style="background:#43a047"></button>
+<button class="sw" data-c="#fb8c00" style="background:#fb8c00"></button>
+<input id="sz" type="range" min="2" max="24" value="6">
+<button id="undo" class="g">↩️</button><button id="clr" class="g">🗑️</button>
+<button id="save" class="g">💾</button><button id="fs" class="g">⛶</button>
+</div>
+<div id="mk" class="hide"></div>
+<div id="pill">متصل ✅</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let role=null,T=null,room=null;
+const say=(id,t,c)=>{const e=$(id);e.textContent=t;e.className="msg "+(c||"")};
+const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+const dec=s=>JSON.parse(decodeURIComponent(escape(atob(s.trim()))));
+const show=id=>["s1","sScreen","sPhone"].forEach(x=>$(x).classList.toggle("hide",x!==id));
+
+// ---------- roles
+$("rPhone").onclick=async()=>{
+  try{const d=await navigator.mediaDevices.enumerateDevices();
+    if(!d.some(x=>x.kind==="videoinput"))return say("m1","لا توجد كاميرا في هذا الجهاز.","bad")}
+  catch(e){return say("m1","تعذّر الوصول للكاميرا. افتح الصفحة عبر HTTPS وفي تبويب مستقل.","bad")}
+  if(!(navigator.maxTouchPoints>0))return say("m1","هذا الجهاز لا يبدو هاتفًا (بدون لمس).","bad");
+  role="phone";show("sPhone");initRoom();
+};
+$("rScreen").onclick=()=>{
+  if(navigator.maxTouchPoints>0||matchMedia("(pointer:coarse)").matches)
+    return say("m1","هذا الجهاز يدعم اللمس، والمطلوب شاشة بدون لمس.","bad");
+  role="screen";show("sScreen");initRoom();
+};
+
+// ---------- transport A: platform room (auto pairing by code)
+let code=String(1000+Math.floor(Math.random()*9000));
+async function initRoom(){
+  if(role==="screen")$("code").textContent=code;
+  try{const R=await claude.use("room");if(!R)throw 0;room=R}catch(e){
+    say(role==="screen"?"m2":"m3","الربط التلقائي غير متاح هنا (سجّل الدخول لـ claude.ai على الجهازين) — استخدم الربط اليدوي.","bad");return}
+  if(role==="screen"){
+    const r=await room.join("air"+code);
+    r.on("hi",()=>{if(!T)connected({send:m=>r.emit("p",m).catch(()=>{})});r.emit("ack",{})});
+    r.on("p",m=>{if(!m.isMe&&m.data)recv(m.data)});
+    say("m2","بانتظار الهاتف…");
+  }
+}
+$("join").onclick=async()=>{
+  const c=$("codeIn").value.trim();if(c.length!==4)return say("m3","أدخل 4 أرقام.","bad");
+  if(!room)return say("m3","الربط التلقائي غير متاح، استخدم اليدوي.","bad");
+  say("m3","جارٍ الاتصال…");
+  const r=await room.join("air"+c);let ok=false;
+  r.on("ack",()=>{if(ok)return;ok=true;T={send:m=>r.emit("p",m).catch(()=>{})};connected(T)});
+  const ping=()=>{if(!ok)r.emit("hi",{}).catch(()=>{})};ping();
+  const iv=setInterval(()=>{ok?clearInterval(iv):ping()},800);
+  setTimeout(()=>{if(!ok)say("m3","لم يرد أحد. تأكد من الرمز وأن الشاشة مفتوحة.","bad")},9000);
+};
+
+// ---------- transport B: manual WebRTC
+const ICE={iceServers:[{urls:"stun:stun.l.google.com:19302"}]};let pc=null;
+const waitIce=p=>new Promise(r=>{if(p.iceGatheringState==="complete")return r();
+  p.onicegatheringstatechange=()=>p.iceGatheringState==="complete"&&r();setTimeout(r,4000)});
+function dcSetup(d){d.onopen=()=>connected({send:m=>d.readyState==="open"&&d.send(JSON.stringify(m))});
+  d.onmessage=e=>recv(JSON.parse(e.data))}
+$("mkOffer").onclick=async()=>{pc=new RTCPeerConnection(ICE);dcSetup(pc.createDataChannel("p"));
+  await pc.setLocalDescription(await pc.createOffer());await waitIce(pc);$("offerOut").value=enc(pc.localDescription)};
+$("apAns").onclick=async()=>{try{await pc.setRemoteDescription(dec($("ansIn").value))}catch(e){say("m2","رمز غير صالح","bad")}};
+$("mkAns").onclick=async()=>{try{pc=new RTCPeerConnection(ICE);pc.ondatachannel=e=>dcSetup(e.channel);
+  await pc.setRemoteDescription(dec($("offerIn").value));await pc.setLocalDescription(await pc.createAnswer());
+  await waitIce(pc);$("ansOut").value=enc(pc.localDescription)}catch(e){say("m3","رمز غير صالح","bad")}};
+
+function connected(t){if(T&&T!==t&&T.live)return;T=t;T.live=true;role==="screen"?startBoard():startPhone()}
+function recv(m){if(role==="screen")onMsg(m)}
+
+// ---------- screen: whiteboard
+let bc,bx,cx,color="#111",size=6,strokes=[],curS=null,pend=[],smP=null;
+function startBoard(){
+  if(bc)return;
+  $("app").classList.add("hide");$("screenView").classList.remove("hide");
+  bc=$("board");cx=$("cur").getContext("2d");bx=bc.getContext("2d");
+  const fit=()=>{const img=bc.width?bx.getImageData(0,0,bc.width,bc.height):null;
+    bc.width=$("cur").width=innerWidth;bc.height=$("cur").height=innerHeight;redraw()};fit();addEventListener("resize",fit);
+  document.querySelectorAll(".sw").forEach(b=>b.onclick=()=>{color=b.dataset.c;document.querySelectorAll(".sw").forEach(x=>x.classList.toggle("on",x===b))});
+  $("sz").oninput=e=>size=+e.target.value;
+  $("clr").onclick=()=>{strokes=[];redraw()};
+  $("undo").onclick=()=>{strokes.pop();redraw()};
+  $("fs").onclick=()=>document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();
+  $("save").onclick=async()=>{const c=document.createElement("canvas");c.width=bc.width;c.height=bc.height;
+    const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(bc,0,0);
+    const blob=await new Promise(r=>c.toBlob(r));
+    try{const d=await claude.use("downloads");if(d)return d.save({filename:"board.png",data:blob})}catch(e){}
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="board.png";a.click()};
+  $("mk").innerHTML=[[6,8],[94,8],[94,92],[6,92]].map((p,i)=>`<div class="mk" style="left:${p[0]}%;top:${p[1]}%">${i+1}</div>`).join("");
+  setInterval(()=>{if(performance.now()-lastMsg>2500)$("pill").textContent="الهاتف لا يرسل…"},1000);
+}
+let lastMsg=performance.now();
+function onMsg(m){
+  lastMsg=performance.now();$("pill").textContent="متصل ✅";
+  if(m.cal!==undefined)$("mk").classList.toggle("hide",!m.cal);
+  (m.pts||[]).forEach(p=>{
+    if(p[0]<0){curS=null;upN=9;lastM=0;cx.clearRect(0,0,bc.width,bc.height);return}
+    feed(p[0]*bc.width,p[1]*bc.height,p[2])});
+}
+let upN=0,lastM=0;
+function feed(x,y,mode){ // mode 0 up, 1 draw, 2 erase
+  if(mode===0){if(++upN<4&&lastM>0)mode=lastM;}else upN=0;lastM=mode;
+  smP=smP?{x:smP.x+(x-smP.x)*.55,y:smP.y+(y-smP.y)*.55}:{x,y};x=smP.x;y=smP.y;
+  cx.clearRect(0,0,bc.width,bc.height);
+  cx.strokeStyle=mode===2?"#e53935":color;cx.lineWidth=2;cx.beginPath();
+  cx.arc(x,y,mode===2?size*2.5:size/2+4,0,7);cx.stroke();
+  if(mode===0){curS=null;return}
+  const er=mode===2;
+  if(!curS||curS.er!==er){curS={er,c:color,w:er?size*5:size,p:[]};strokes.push(curS)}
+  curS.p.push([x,y]);redraw(true);
+}
+function seg(s,from){
+  const p=s.p;if(!p.length)return;
+  bx.save();bx.lineCap=bx.lineJoin="round";bx.lineWidth=s.w;
+  bx.globalCompositeOperation=s.er?"destination-out":"source-over";bx.strokeStyle=s.c;
+  bx.beginPath();bx.moveTo(p[Math.max(0,from)][0],p[Math.max(0,from)][1]);
+  for(let i=Math.max(1,from+1);i<p.length-1;i++){const mx=(p[i][0]+p[i+1][0])/2,my=(p[i][1]+p[i+1][1])/2;bx.quadraticCurveTo(p[i][0],p[i][1],mx,my)}
+  if(p.length>1)bx.lineTo(p[p.length-1][0],p[p.length-1][1]);else bx.lineTo(p[0][0]+.1,p[0][1]);
+  bx.stroke();bx.restore();
+}
+function redraw(){bx.clearRect(0,0,bc.width,bc.height);strokes.forEach(s=>seg(s,0))}
+
+// ---------- phone: camera, screen calibration, tracking
+let stream=null,facing="environment",engine=null,lm=null,quad=[],Hm=null,calMode=false,colMode=false,target=null,drawOn=false,lastOut=[];
+const MK=[[.06,.08],[.94,.08],[.94,.92],[.06,.92]],TOL=55;
+function solveH(s,d){const A=[];for(let i=0;i<4;i++){const[x,y]=s[i],[u,v]=d[i];
+  A.push([x,y,1,0,0,0,-x*u,-y*u,u]);A.push([0,0,0,x,y,1,-x*v,-y*v,v])}
+  for(let c=0;c<8;c++){let p=c;for(let r=c+1;r<8;r++)if(Math.abs(A[r][c])>Math.abs(A[p][c]))p=r;
+    [A[c],A[p]]=[A[p],A[c]];if(Math.abs(A[c][c])<1e-12)return null;
+    for(let r=0;r<8;r++)if(r!==c){const f=A[r][c]/A[c][c];for(let k=c;k<9;k++)A[r][k]-=f*A[c][k]}}
+  return A.map((r,i)=>r[8]/r[i])}
+const applyH=(h,x,y)=>{const w=h[6]*x+h[7]*y+1;return[(h[0]*x+h[1]*y+h[2])/w,(h[3]*x+h[4]*y+h[5])/w]};
+function updateStep(){
+  let t;
+  if(calMode)t=`اضغط على الدائرة رقم ${quad.length+1} كما تظهر في الكاميرا (من 4)`;
+  else if(!Hm)t="اضغط «تحديد الشاشة» وحدد زواياها";
+  else if(!lm&&!target)t="الآن اضغط «لون الإصبع/القلم» ثم اضغط على إصبعك أو الغطاء الملون داخل الصورة";
+  else t=drawOn?"الرسم يعمل ✏️ حرّك يدك":"جاهز: فعّل «الرسم» وحرّك يدك أمام الشاشة";
+  $("step").textContent=t;
+}
+function startCal(){quad=[];Hm=null;calMode=true;colMode=false;T&&T.send({cal:1});updateStep()}
+$("bCal").onclick=startCal;
+$("bCol").onclick=()=>{colMode=true;calMode=false;$("step").textContent="اضغط على إصبعك أو الجسم الملون في الصورة"};
+$("bDraw").onclick=()=>{drawOn=!drawOn;$("bDraw").textContent="✏️ الرسم: "+(drawOn?"يعمل":"متوقف");updateStep()};
+$("flip").onclick=()=>{facing=facing==="user"?"environment":"user";openCam()};
+$("ov").addEventListener("pointerdown",e=>{
+  const r=e.target.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+  if(calMode){quad.push([x,y]);
+    if(quad.length===4){Hm=solveH(quad,MK);calMode=false;T&&T.send({cal:0});
+      if(!Hm){quad=[];say("trk","الزوايا غير صالحة، أعد التحديد.","bad")}}
+    updateStep()}
+  else if(colMode){colMode=false;sampleColor(x,y);updateStep()}
+});
+function sampleColor(x,y){
+  const v=$("cam"),c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;
+  const g=c.getContext("2d");g.drawImage(v,0,0);const px=Math.round(x*c.width),py=Math.round(y*c.height);
+  const d=g.getImageData(Math.max(0,px-4),Math.max(0,py-4),9,9).data;let r=0,gg=0,b=0,n=d.length/4;
+  for(let i=0;i<d.length;i+=4){r+=d[i];gg+=d[i+1];b+=d[i+2]}
+  target=[r/n,gg/n,b/n].map(Math.round);$("swatch").style.background=`rgb(${target})`;
+}
+async function openCam(){
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:960},height:{ideal:720}},audio:false});
+  const v=$("cam");v.srcObject=stream;await v.play();
+  const o=$("ov");o.width=v.videoWidth||640;o.height=v.videoHeight||480;
+}
+const sc=document.createElement("canvas"),sg=sc.getContext("2d",{willReadFrequently:true});
+function findColor(v){
+  const W=160,H=Math.max(1,Math.round(160*v.videoHeight/v.videoWidth));sc.width=W;sc.height=H;
+  sg.drawImage(v,0,0,W,H);const d=sg.getImageData(0,0,W,H).data,T2=TOL*TOL,hit=[];
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=(y*W+x)*4,a=d[i]-target[0],b=d[i+1]-target[1],c=d[i+2]-target[2];
+    if(a*a+b*b+c*c<T2)hit.push(x,y)}
+  if(hit.length<10)return null;
+  let cx0=0,cy0=0,n=hit.length/2;for(let i=0;i<hit.length;i+=2){cx0+=hit[i];cy0+=hit[i+1]}cx0/=n;cy0/=n;
+  let sx=0,sy=0,m=0;for(let i=0;i<hit.length;i+=2)if(Math.hypot(hit[i]-cx0,hit[i+1]-cy0)<W*.12){sx+=hit[i];sy+=hit[i+1];m++}
+  return m>=5?[sx/m/W,sy/m/H]:null;
+}
+function paint(pt,m){
+  const o=$("ov"),g=o.getContext("2d");g.clearRect(0,0,o.width,o.height);
+  g.lineWidth=3;g.strokeStyle=g.fillStyle="#3ddc97";g.font="bold 30px sans-serif";
+  if(quad.length){g.beginPath();quad.forEach((q,i)=>{const x=q[0]*o.width,y=q[1]*o.height;i?g.lineTo(x,y):g.moveTo(x,y)});
+    if(quad.length===4)g.closePath();g.stroke();quad.forEach((q,i)=>g.fillText(i+1,q[0]*o.width+8,q[1]*o.height-8))}
+  if(pt){g.fillStyle=m===1?"#3ddc97":m===2?"#ffb020":"#ff6b6b";g.beginPath();g.arc(pt[0]*o.width,pt[1]*o.height,12,0,7);g.fill()}
+}
+function loop(){
+  const v=$("cam");let pt=null,gm=0;
+  if(v.readyState>=2&&v.videoWidth){
+    if(lm){const r=lm.detectForVideo(v,performance.now());
+      if(r.landmarks&&r.landmarks[0]){const h=r.landmarks[0],up=(a,b)=>h[a].y<h[b].y-.01;
+        const i=up(8,6),md=up(12,10),rg=up(16,14),pn=up(20,18);
+        pt=[h[8].x,h[8].y];gm=i&&!md&&!rg&&!pn?1:i&&md&&!rg&&!pn?2:0}}
+    else if(target)pt=findColor(v);
+  }
+  let out=[-1,-1,0],m=0;
+  if(pt&&Hm){const[u,w]=applyH(Hm,pt[0],pt[1]);
+    if(u>-.03&&u<1.03&&w>-.03&&w<1.03){m=gm===2?2:(drawOn?1:gm);out=[+u.toFixed(4),+w.toFixed(4),m]}}
+  lastOut.push(out);if(lastOut.length>10)lastOut.shift();
+  paint(pt,m);requestAnimationFrame(loop);
+}
+async function startPhone(){
+  ["s1","sScreen","sPhone"].forEach(x=>$(x).classList.add("hide"));$("phoneView").classList.remove("hide");
+  try{await openCam()}catch(e){return say("trk","تعذّر فتح الكاميرا: "+e.message,"bad")}
+  startCal();loop();
+  setInterval(()=>{if(lastOut.length&&T){T.send({pts:lastOut});lastOut=[]}},50);
+  say("trk","جارٍ محاولة تحميل تتبع اليد بالذكاء الاصطناعي… (يمكنك المتابعة بتتبع اللون)");
+  try{
+    const base="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+    const mod=await Promise.race([import(base+"/vision_bundle.mjs"),new Promise((_,r)=>setTimeout(r,8000))]);
+    const f=await mod.FilesetResolver.forVisionTasks(base+"/wasm");
+    lm=await mod.HandLandmarker.createFromOptions(f,{baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"},runningMode:"VIDEO",numHands:1});
+    engine="ai";say("trk","تتبع اليد بالذكاء الاصطناعي يعمل ✅ (سبابة فقط = رسم، سبابة+وسطى = ممحاة)","ok");updateStep();
+  }catch(e){engine="color";say("trk","تتبع اللون فعّال: حدد لون إصبعك أو غطاء القلم.","ok")}
+}
+window.__test={getStrokes:()=>strokes.length,pts:()=>strokes.flatMap(s=>s.p),size:()=>[bc.width,bc.height],engine:()=>engine};
+</script>
+</body>
+</html>
